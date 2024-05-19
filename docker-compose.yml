@@ -1,0 +1,43 @@
+version: "3.4"
+
+services:
+
+  py-srv:
+    build: py-srv
+    command: python3 app.py
+    healthcheck:
+      test: curl --fail http://localhost:5000 || exit 1
+      interval: 10s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    ports:
+      - "80:5000"
+    volumes:
+      - ./py-srv/bin:/code
+    profiles:
+      - test
+      - prod
+
+  selenium:
+    image: selenium/standalone-chrome
+    hostname: selenium
+    ports:
+      - 4444
+    profiles:
+      - test
+      
+  py-test-srv:
+    build: py-test-srv
+    command: python3 -m unittest
+    depends_on:
+      py-srv:
+        condition: service_healthy
+        restart: true
+      selenium:
+        condition: service_started
+    links:
+      - "py-srv:py-srv"
+      - "selenium:selenium"
+    profiles:
+      - test
